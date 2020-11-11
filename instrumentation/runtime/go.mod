@@ -4,6 +4,8 @@ go 1.14
 
 replace go.opentelemetry.io/contrib => ../..
 
+replace go.opentelemetry.io/otel => ../../../../../go.opentelemetry.io
+	
 require (
 	github.com/stretchr/testify v1.6.1
 	go.opentelemetry.io/contrib v0.13.0

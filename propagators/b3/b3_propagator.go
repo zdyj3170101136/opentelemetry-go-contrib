@@ -20,7 +20,7 @@ import (
 	"strings"
 
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/api/trace"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -44,7 +44,7 @@ const (
 )
 
 var (
-	empty = trace.EmptySpanContext()
+	empty = trace.SpanContext{}
 
 	errInvalidSampledByte        = errors.New("invalid B3 Sampled found")
 	errInvalidSampledHeader      = errors.New("invalid B3 Sampled header found")
@@ -225,7 +225,7 @@ func extractMultiple(traceID, spanID, parentSpanID, sampled, flags string) (trac
 			// Pad 64-bit trace IDs.
 			id = b3TraceIDPadding + traceID
 		}
-		if sc.TraceID, err = trace.IDFromHex(id); err != nil {
+		if sc.TraceID, err = trace.TraceIDFromHex(id); err != nil {
 			return empty, errInvalidTraceIDHeader
 		}
 	}
@@ -290,7 +290,7 @@ func extractSingle(contextHeader string) (trace.SpanContext, error) {
 			return empty, errInvalidTraceIDValue
 		}
 		var err error
-		sc.TraceID, err = trace.IDFromHex(traceID)
+		sc.TraceID, err = trace.TraceIDFromHex(traceID)
 		if err != nil {
 			return empty, errInvalidTraceIDValue
 		}

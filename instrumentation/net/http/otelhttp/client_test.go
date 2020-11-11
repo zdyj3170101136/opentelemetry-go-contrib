@@ -22,7 +22,7 @@ import (
 	"strings"
 	"testing"
 
-	"go.opentelemetry.io/otel/api/global"
+	"go.opentelemetry.io/otel/global"
 
 	"github.com/stretchr/testify/assert"
 

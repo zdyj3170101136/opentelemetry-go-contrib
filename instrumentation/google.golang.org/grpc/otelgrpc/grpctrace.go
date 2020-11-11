@@ -20,8 +20,8 @@ import (
 	"google.golang.org/grpc/metadata"
 
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/api/global"
-	"go.opentelemetry.io/otel/api/trace"
+	"go.opentelemetry.io/otel/global"
+	"go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/label"
 )
 

@@ -18,33 +18,33 @@ import (
 	"context"
 	"time"
 
-	oteltrace "go.opentelemetry.io/otel/api/trace"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/label"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // Span is a mock span used in association with Tracer for
 // testing purpose only.
 type Span struct {
-	sc            oteltrace.SpanContext
+	sc            trace.SpanContext
 	tracer        *Tracer
 	Name          string
 	Attributes    map[label.Key]label.Value
-	Kind          oteltrace.SpanKind
+	Kind          trace.SpanKind
 	Status        codes.Code
 	StatusMessage string
-	ParentSpanID  oteltrace.SpanID
-	Links         map[oteltrace.SpanContext][]label.KeyValue
+	ParentSpanID  trace.SpanID
+	Links         map[trace.SpanContext][]label.KeyValue
 }
 
-var _ oteltrace.Span = (*Span)(nil)
+var _ trace.Span = (*Span)(nil)
 
-// SpanContext returns associated oteltrace.SpanContext.
+// SpanContext returns associated trace.SpanContext.
 //
-// If the receiver is nil it returns an empty oteltrace.SpanContext.
-func (ms *Span) SpanContext() oteltrace.SpanContext {
+// If the receiver is nil it returns an empty trace.SpanContext.
+func (ms *Span) SpanContext() trace.SpanContext {
 	if ms == nil {
-		return oteltrace.EmptySpanContext()
+		return trace.SpanContext{}
 	}
 	return ms.sc
 }
@@ -76,12 +76,12 @@ func (ms *Span) SetAttributes(attributes ...label.KeyValue) {
 }
 
 // End puts the span into tracers ended spans.
-func (ms *Span) End(options ...oteltrace.SpanOption) {
+func (ms *Span) End(options ...trace.SpanOption) {
 	ms.tracer.addEndedSpan(ms)
 }
 
 // RecordError does nothing.
-func (ms *Span) RecordError(ctx context.Context, err error, opts ...oteltrace.ErrorOption) {
+func (ms *Span) RecordError(err error, opts ...trace.EventOption) {
 }
 
 // SetName sets the span name.
@@ -90,12 +90,12 @@ func (ms *Span) SetName(name string) {
 }
 
 // Tracer returns the mock tracer implementation of Tracer.
-func (ms *Span) Tracer() oteltrace.Tracer {
+func (ms *Span) Tracer() trace.Tracer {
 	return ms.tracer
 }
 
 // AddEvent does nothing.
-func (ms *Span) AddEvent(ctx context.Context, name string, attrs ...label.KeyValue) {
+func (ms *Span) AddEvent(name string, opts ...trace.EventOption) {
 }
 
 // AddEvent does nothing.

@@ -24,11 +24,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/codes"
-	"go.opentelemetry.io/otel/propagators"
-
-	"go.opentelemetry.io/otel/api/trace"
 	"go.opentelemetry.io/otel/label"
+	"go.opentelemetry.io/otel/propagators"
 	"go.opentelemetry.io/otel/semconv"
 
 	mockmeter "go.opentelemetry.io/contrib/internal/metric"
@@ -107,11 +106,11 @@ func TestHandlerNoWrite(t *testing.T) {
 	tracerProvider, tracer := mocktrace.NewTracerProviderAndTracer(instrumentationName)
 
 	operation := "test_handler"
-	var span trace.Span
+	var span otel.Span
 
 	h := NewHandler(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			span = trace.SpanFromContext(r.Context())
+			span = otel.SpanFromContext(r.Context())
 		}), operation,
 		WithTracerProvider(tracerProvider),
 		WithPropagators(propagators.TraceContext{}),

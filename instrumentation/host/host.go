@@ -26,8 +26,8 @@ import (
 	"github.com/shirou/gopsutil/process"
 
 	"go.opentelemetry.io/contrib"
-	"go.opentelemetry.io/otel/api/global"
-	"go.opentelemetry.io/otel/api/metric"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/global"
 	"go.opentelemetry.io/otel/label"
 	"go.opentelemetry.io/otel/unit"
 )
@@ -35,14 +35,14 @@ import (
 // Host reports the work-in-progress conventional host metrics specified by OpenTelemetry
 type host struct {
 	config config
-	meter  metric.Meter
+	meter  otel.Meter
 }
 
 // config contains optional settings for reporting host metrics.
 type config struct {
-	// MeterProvider sets the metric.MeterProvider.  If nil, the global
+	// MeterProvider sets the otel.MeterProvider.  If nil, the global
 	// Provider will be used.
-	MeterProvider metric.MeterProvider
+	MeterProvider otel.MeterProvider
 }
 
 // Option supports configuring optional settings for host metrics.
@@ -52,13 +52,13 @@ type Option interface {
 }
 
 // WithMeterProvider sets the Metric implementation to use for
-// reporting.  If this option is not used, the global metric.MeterProvider
+// reporting.  If this option is not used, the global otel.MeterProvider
 // will be used.  `provider` must be non-nil.
-func WithMeterProvider(provider metric.MeterProvider) Option {
+func WithMeterProvider(provider otel.MeterProvider) Option {
 	return metricProviderOption{provider}
 }
 
-type metricProviderOption struct{ metric.MeterProvider }
+type metricProviderOption struct{ otel.MeterProvider }
 
 // ApplyHost implements Option.
 func (o metricProviderOption) ApplyHost(c *config) {
@@ -104,7 +104,7 @@ func Start(opts ...Option) error {
 	h := &host{
 		meter: c.MeterProvider.Meter(
 			"go.opentelemetry.io/contrib/instrumentation/host",
-			metric.WithInstrumentationVersion(contrib.SemVersion()),
+			otel.WithInstrumentationVersion(contrib.SemVersion()),
 		),
 		config: c,
 	}
@@ -115,13 +115,13 @@ func (h *host) register() error {
 	var (
 		err error
 
-		processCPUTime metric.Float64SumObserver
-		hostCPUTime    metric.Float64SumObserver
+		processCPUTime otel.Float64SumObserver
+		hostCPUTime    otel.Float64SumObserver
 
-		hostMemoryUsage       metric.Int64UpDownSumObserver
-		hostMemoryUtilization metric.Float64UpDownSumObserver
+		hostMemoryUsage       otel.Int64UpDownSumObserver
+		hostMemoryUtilization otel.Float64UpDownSumObserver
 
-		networkIOUsage metric.Int64SumObserver
+		networkIOUsage otel.Int64SumObserver
 
 		// lock prevents a race between batch observer and instrument registration.
 		lock sync.Mutex
@@ -135,7 +135,7 @@ func (h *host) register() error {
 	lock.Lock()
 	defer lock.Unlock()
 
-	batchObserver := h.meter.NewBatchObserver(func(ctx context.Context, result metric.BatchObserverResult) {
+	batchObserver := h.meter.NewBatchObserver(func(ctx context.Context, result otel.BatchObserverResult) {
 		lock.Lock()
 		defer lock.Unlock()
 
@@ -229,8 +229,8 @@ func (h *host) register() error {
 	// https://github.com/open-telemetry/opentelemetry-specification/issues/705
 	if processCPUTime, err = batchObserver.NewFloat64SumObserver(
 		"process.cpu.time",
-		metric.WithUnit("s"),
-		metric.WithDescription(
+		otel.WithUnit("s"),
+		otel.WithDescription(
 			"Accumulated CPU time spent by this process labeled by state (User, System, ...)",
 		),
 	); err != nil {
@@ -239,8 +239,8 @@ func (h *host) register() error {
 
 	if hostCPUTime, err = batchObserver.NewFloat64SumObserver(
 		"system.cpu.time",
-		metric.WithUnit("s"),
-		metric.WithDescription(
+		otel.WithUnit("s"),
+		otel.WithDescription(
 			"Accumulated CPU time spent by this host labeled by state (User, System, Other, Idle)",
 		),
 	); err != nil {
@@ -249,8 +249,8 @@ func (h *host) register() error {
 
 	if hostMemoryUsage, err = batchObserver.NewInt64UpDownSumObserver(
 		"system.memory.usage",
-		metric.WithUnit(unit.Bytes),
-		metric.WithDescription(
+		otel.WithUnit(unit.Bytes),
+		otel.WithDescription(
 			"Memory usage of this process labeled by memory state (Used, Available)",
 		),
 	); err != nil {
@@ -259,8 +259,8 @@ func (h *host) register() error {
 
 	if hostMemoryUtilization, err = batchObserver.NewFloat64UpDownSumObserver(
 		"system.memory.utilization",
-		metric.WithUnit(unit.Dimensionless),
-		metric.WithDescription(
+		otel.WithUnit(unit.Dimensionless),
+		otel.WithDescription(
 			"Memory utilization of this process labeled by memory state (Used, Available)",
 		),
 	); err != nil {
@@ -269,8 +269,8 @@ func (h *host) register() error {
 
 	if networkIOUsage, err = batchObserver.NewInt64SumObserver(
 		"system.network.io",
-		metric.WithUnit(unit.Bytes),
-		metric.WithDescription(
+		otel.WithUnit(unit.Bytes),
+		otel.WithDescription(
 			"Bytes transferred labeled by direction (Transmit, Receive)",
 		),
 	); err != nil {

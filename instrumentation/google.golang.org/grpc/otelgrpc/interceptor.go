@@ -30,7 +30,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/api/trace"
+	"go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/label"
 	"go.opentelemetry.io/otel/semconv"
@@ -45,15 +45,15 @@ type messageType label.KeyValue
 func (m messageType) Event(ctx context.Context, id int, message interface{}) {
 	span := trace.SpanFromContext(ctx)
 	if p, ok := message.(proto.Message); ok {
-		span.AddEvent(ctx, "message",
-			label.KeyValue(m),
-			semconv.RPCMessageIDKey.Int(id),
-			semconv.RPCMessageUncompressedSizeKey.Int(proto.Size(p)),
+		span.AddEvent("message",
+			trace.WithAttributes(label.KeyValue(m),
+				semconv.RPCMessageIDKey.Int(id),
+				semconv.RPCMessageUncompressedSizeKey.Int(proto.Size(p))),
 		)
 	} else {
-		span.AddEvent(ctx, "message",
-			label.KeyValue(m),
-			semconv.RPCMessageIDKey.Int(id),
+		span.AddEvent("message",
+			trace.WithAttributes(label.KeyValue(m),
+				semconv.RPCMessageIDKey.Int(id)),
 		)
 	}
 }

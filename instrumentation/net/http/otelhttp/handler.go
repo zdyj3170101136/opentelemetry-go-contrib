@@ -22,9 +22,8 @@ import (
 	"github.com/felixge/httpsnoop"
 
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/api/global"
-	"go.opentelemetry.io/otel/api/metric"
-	"go.opentelemetry.io/otel/api/trace"
+	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/global"
 	"go.opentelemetry.io/otel/label"
 	"go.opentelemetry.io/otel/semconv"
 )
@@ -40,15 +39,15 @@ type Handler struct {
 	handler   http.Handler
 
 	tracer            trace.Tracer
-	meter             metric.Meter
+	meter             otel.Meter
 	propagators       otel.TextMapPropagator
 	spanStartOptions  []trace.SpanOption
 	readEvent         bool
 	writeEvent        bool
 	filters           []Filter
 	spanNameFormatter func(string, *http.Request) string
-	counters          map[string]metric.Int64Counter
-	valueRecorders    map[string]metric.Int64ValueRecorder
+	counters          map[string]otel.Int64Counter
+	valueRecorders    map[string]otel.Int64ValueRecorder
 }
 
 func defaultHandlerFormatter(operation string, _ *http.Request) string {
@@ -93,8 +92,8 @@ func handleErr(err error) {
 }
 
 func (h *Handler) createMeasures() {
-	h.counters = make(map[string]metric.Int64Counter)
-	h.valueRecorders = make(map[string]metric.Int64ValueRecorder)
+	h.counters = make(map[string]otel.Int64Counter)
+	h.valueRecorders = make(map[string]otel.Int64ValueRecorder)
 
 	requestBytesCounter, err := h.meter.NewInt64Counter(RequestContentLength)
 	handleErr(err)
@@ -134,7 +133,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	readRecordFunc := func(int64) {}
 	if h.readEvent {
 		readRecordFunc = func(n int64) {
-			span.AddEvent(ctx, "read", ReadBytesKey.Int64(n))
+			span.AddEvent("read", trace.WithAttributes(ReadBytesKey.Int64(n)))
 		}
 	}
 	bw := bodyWrapper{ReadCloser: r.Body, record: readRecordFunc}
@@ -143,7 +142,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	writeRecordFunc := func(int64) {}
 	if h.writeEvent {
 		writeRecordFunc = func(n int64) {
-			span.AddEvent(ctx, "write", WroteBytesKey.Int64(n))
+			span.AddEvent("write", trace.WithAttributes(WroteBytesKey.Int64(n)))
 		}
 	}
 

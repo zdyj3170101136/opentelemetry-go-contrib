@@ -2,6 +2,8 @@ module go.opentelemetry.io/contrib
 
 go 1.14
 
+replace go.opentelemetry.io/otel => ../../../go.opentelemetry.io
+
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/kr/pretty v0.1.0 // indirect

@@ -21,15 +21,15 @@ import (
 	"time"
 
 	"go.opentelemetry.io/contrib"
-	"go.opentelemetry.io/otel/api/global"
-	"go.opentelemetry.io/otel/api/metric"
+	"go.opentelemetry.io/otel/global"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/unit"
 )
 
 // Runtime reports the work-in-progress conventional runtime metrics specified by OpenTelemetry
 type runtime struct {
 	config config
-	meter  metric.Meter
+	meter  otel.Meter
 }
 
 // config contains optional settings for reporting runtime metrics.
@@ -39,9 +39,9 @@ type config struct {
 	// are ignored.
 	MinimumReadMemStatsInterval time.Duration
 
-	// MeterProvider sets the metric.MeterProvider.  If nil, the global
+	// MeterProvider sets the otel.MeterProvider.  If nil, the global
 	// Provider will be used.
-	MeterProvider metric.MeterProvider
+	MeterProvider otel.MeterProvider
 }
 
 // Option supports configuring optional settings for runtime metrics.
@@ -73,13 +73,13 @@ func (o minimumReadMemStatsIntervalOption) ApplyRuntime(c *config) {
 }
 
 // WithMeterProvider sets the Metric implementation to use for
-// reporting.  If this option is not used, the global metric.MeterProvider
+// reporting.  If this option is not used, the global otel.MeterProvider
 // will be used.  `provider` must be non-nil.
-func WithMeterProvider(provider metric.MeterProvider) Option {
+func WithMeterProvider(provider otel.MeterProvider) Option {
 	return metricProviderOption{provider}
 }
 
-type metricProviderOption struct{ metric.MeterProvider }
+type metricProviderOption struct{ otel.MeterProvider }
 
 // ApplyRuntime implements Option.
 func (o metricProviderOption) ApplyRuntime(c *config) {
@@ -110,7 +110,7 @@ func Start(opts ...Option) error {
 	r := &runtime{
 		meter: c.MeterProvider.Meter(
 			"go.opentelemetry.io/contrib/instrumentation/runtime",
-			metric.WithInstrumentationVersion(contrib.SemVersion()),
+			otel.WithInstrumentationVersion(contrib.SemVersion()),
 		),
 		config: c,
 	}
@@ -121,31 +121,31 @@ func (r *runtime) register() error {
 	startTime := time.Now()
 	if _, err := r.meter.NewInt64SumObserver(
 		"runtime.uptime",
-		func(_ context.Context, result metric.Int64ObserverResult) {
+		func(_ context.Context, result otel.Int64ObserverResult) {
 			result.Observe(time.Since(startTime).Milliseconds())
 		},
-		metric.WithUnit(unit.Milliseconds),
-		metric.WithDescription("Milliseconds since application was initialized"),
+		otel.WithUnit(unit.Milliseconds),
+		otel.WithDescription("Milliseconds since application was initialized"),
 	); err != nil {
 		return err
 	}
 
 	if _, err := r.meter.NewInt64UpDownSumObserver(
 		"runtime.go.goroutines",
-		func(_ context.Context, result metric.Int64ObserverResult) {
+		func(_ context.Context, result otel.Int64ObserverResult) {
 			result.Observe(int64(goruntime.NumGoroutine()))
 		},
-		metric.WithDescription("Number of goroutines that currently exist"),
+		otel.WithDescription("Number of goroutines that currently exist"),
 	); err != nil {
 		return err
 	}
 
 	if _, err := r.meter.NewInt64SumObserver(
 		"runtime.go.cgo.calls",
-		func(_ context.Context, result metric.Int64ObserverResult) {
+		func(_ context.Context, result otel.Int64ObserverResult) {
 			result.Observe(goruntime.NumCgoCall())
 		},
-		metric.WithDescription("Number of cgo calls made by the current process"),
+		otel.WithDescription("Number of cgo calls made by the current process"),
 	); err != nil {
 		return err
 	}
@@ -161,21 +161,21 @@ func (r *runtime) registerMemStats() error {
 	var (
 		err error
 
-		heapAlloc    metric.Int64UpDownSumObserver
-		heapIdle     metric.Int64UpDownSumObserver
-		heapInuse    metric.Int64UpDownSumObserver
-		heapObjects  metric.Int64UpDownSumObserver
-		heapReleased metric.Int64UpDownSumObserver
-		heapSys      metric.Int64UpDownSumObserver
-		liveObjects  metric.Int64UpDownSumObserver
+		heapAlloc    otel.Int64UpDownSumObserver
+		heapIdle     otel.Int64UpDownSumObserver
+		heapInuse    otel.Int64UpDownSumObserver
+		heapObjects  otel.Int64UpDownSumObserver
+		heapReleased otel.Int64UpDownSumObserver
+		heapSys      otel.Int64UpDownSumObserver
+		liveObjects  otel.Int64UpDownSumObserver
 
 		// TODO: is ptrLookups useful? I've not seen a value
 		// other than zero.
-		ptrLookups metric.Int64SumObserver
+		ptrLookups otel.Int64SumObserver
 
-		gcCount      metric.Int64SumObserver
-		pauseTotalNs metric.Int64SumObserver
-		gcPauseNs    metric.Int64ValueRecorder
+		gcCount      otel.Int64SumObserver
+		pauseTotalNs otel.Int64SumObserver
+		gcPauseNs    otel.Int64ValueRecorder
 
 		lastNumGC    uint32
 		lastMemStats time.Time
@@ -188,7 +188,7 @@ func (r *runtime) registerMemStats() error {
 	lock.Lock()
 	defer lock.Unlock()
 
-	batchObserver := r.meter.NewBatchObserver(func(ctx context.Context, result metric.BatchObserverResult) {
+	batchObserver := r.meter.NewBatchObserver(func(ctx context.Context, result otel.BatchObserverResult) {
 		lock.Lock()
 		defer lock.Unlock()
 
@@ -219,31 +219,31 @@ func (r *runtime) registerMemStats() error {
 
 	if heapAlloc, err = batchObserver.NewInt64UpDownSumObserver(
 		"runtime.go.mem.heap_alloc",
-		metric.WithUnit(unit.Bytes),
-		metric.WithDescription("Bytes of allocated heap objects"),
+		otel.WithUnit(unit.Bytes),
+		otel.WithDescription("Bytes of allocated heap objects"),
 	); err != nil {
 		return err
 	}
 
 	if heapIdle, err = batchObserver.NewInt64UpDownSumObserver(
 		"runtime.go.mem.heap_idle",
-		metric.WithUnit(unit.Bytes),
-		metric.WithDescription("Bytes in idle (unused) spans"),
+		otel.WithUnit(unit.Bytes),
+		otel.WithDescription("Bytes in idle (unused) spans"),
 	); err != nil {
 		return err
 	}
 
 	if heapInuse, err = batchObserver.NewInt64UpDownSumObserver(
 		"runtime.go.mem.heap_inuse",
-		metric.WithUnit(unit.Bytes),
-		metric.WithDescription("Bytes in in-use spans"),
+		otel.WithUnit(unit.Bytes),
+		otel.WithDescription("Bytes in in-use spans"),
 	); err != nil {
 		return err
 	}
 
 	if heapObjects, err = batchObserver.NewInt64UpDownSumObserver(
 		"runtime.go.mem.heap_objects",
-		metric.WithDescription("Number of allocated heap objects"),
+		otel.WithDescription("Number of allocated heap objects"),
 	); err != nil {
 		return err
 	}
@@ -252,37 +252,37 @@ func (r *runtime) registerMemStats() error {
 	// understand the meaning of this value.
 	if heapReleased, err = batchObserver.NewInt64UpDownSumObserver(
 		"runtime.go.mem.heap_released",
-		metric.WithUnit(unit.Bytes),
-		metric.WithDescription("Bytes of idle spans whose physical memory has been returned to the OS"),
+		otel.WithUnit(unit.Bytes),
+		otel.WithDescription("Bytes of idle spans whose physical memory has been returned to the OS"),
 	); err != nil {
 		return err
 	}
 
 	if heapSys, err = batchObserver.NewInt64UpDownSumObserver(
 		"runtime.go.mem.heap_sys",
-		metric.WithUnit(unit.Bytes),
-		metric.WithDescription("Bytes of heap memory obtained from the OS"),
+		otel.WithUnit(unit.Bytes),
+		otel.WithDescription("Bytes of heap memory obtained from the OS"),
 	); err != nil {
 		return err
 	}
 
 	if ptrLookups, err = batchObserver.NewInt64SumObserver(
 		"runtime.go.mem.lookups",
-		metric.WithDescription("Number of pointer lookups performed by the runtime"),
+		otel.WithDescription("Number of pointer lookups performed by the runtime"),
 	); err != nil {
 		return err
 	}
 
 	if liveObjects, err = batchObserver.NewInt64UpDownSumObserver(
 		"runtime.go.mem.live_objects",
-		metric.WithDescription("Number of live objects is the number of cumulative Mallocs - Frees"),
+		otel.WithDescription("Number of live objects is the number of cumulative Mallocs - Frees"),
 	); err != nil {
 		return err
 	}
 
 	if gcCount, err = batchObserver.NewInt64SumObserver(
 		"runtime.go.gc.count",
-		metric.WithDescription("Number of completed garbage collection cycles"),
+		otel.WithDescription("Number of completed garbage collection cycles"),
 	); err != nil {
 		return err
 	}
@@ -293,7 +293,7 @@ func (r *runtime) registerMemStats() error {
 	if pauseTotalNs, err = batchObserver.NewInt64SumObserver(
 		"runtime.go.gc.pause_total_ns",
 		// TODO: nanoseconds units
-		metric.WithDescription("Cumulative nanoseconds in GC stop-the-world pauses since the program started"),
+		otel.WithDescription("Cumulative nanoseconds in GC stop-the-world pauses since the program started"),
 	); err != nil {
 		return err
 	}
@@ -301,7 +301,7 @@ func (r *runtime) registerMemStats() error {
 	if gcPauseNs, err = r.meter.NewInt64ValueRecorder(
 		"runtime.go.gc.pause_ns",
 		// TODO: nanoseconds units
-		metric.WithDescription("Amount of nanoseconds in GC stop-the-world pauses"),
+		otel.WithDescription("Amount of nanoseconds in GC stop-the-world pauses"),
 	); err != nil {
 		return err
 	}
@@ -311,7 +311,7 @@ func (r *runtime) registerMemStats() error {
 
 func computeGCPauses(
 	ctx context.Context,
-	recorder *metric.Int64ValueRecorder,
+	recorder *otel.Int64ValueRecorder,
 	circular []uint64,
 	lastNumGC, currentNumGC uint32,
 ) {
@@ -343,7 +343,7 @@ func computeGCPauses(
 
 func recordGCPauses(
 	ctx context.Context,
-	recorder *metric.Int64ValueRecorder,
+	recorder *otel.Int64ValueRecorder,
 	pauses []uint64,
 ) {
 	for _, pause := range pauses {

@@ -19,9 +19,8 @@ import (
 
 	"go.opentelemetry.io/contrib"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/api/global"
-	"go.opentelemetry.io/otel/api/metric"
-	"go.opentelemetry.io/otel/api/trace"
+	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/global"
 )
 
 const (
@@ -32,7 +31,7 @@ const (
 // and http.Transport types.
 type config struct {
 	Tracer            trace.Tracer
-	Meter             metric.Meter
+	Meter             otel.Meter
 	Propagators       otel.TextMapPropagator
 	SpanStartOptions  []trace.SpanOption
 	ReadEvent         bool
@@ -41,7 +40,7 @@ type config struct {
 	SpanNameFormatter func(string, *http.Request) string
 
 	TracerProvider trace.TracerProvider
-	MeterProvider  metric.MeterProvider
+	MeterProvider  otel.MeterProvider
 }
 
 // Option Interface used for setting *optional* config properties
@@ -74,7 +73,7 @@ func newConfig(opts ...Option) *config {
 	)
 	c.Meter = c.MeterProvider.Meter(
 		instrumentationName,
-		metric.WithInstrumentationVersion(contrib.SemVersion()),
+		otel.WithInstrumentationVersion(contrib.SemVersion()),
 	)
 
 	return c
@@ -90,7 +89,7 @@ func WithTracerProvider(provider trace.TracerProvider) Option {
 
 // WithMeterProvider specifies a meter provider to use for creating a meter.
 // If none is specified, the global provider is used.
-func WithMeterProvider(provider metric.MeterProvider) Option {
+func WithMeterProvider(provider otel.MeterProvider) Option {
 	return OptionFunc(func(cfg *config) {
 		cfg.MeterProvider = provider
 	})
@@ -115,7 +114,7 @@ func WithPropagators(ps otel.TextMapPropagator) Option {
 }
 
 // WithSpanOptions configures an additional set of
-// trace.SpanOptions, which are applied to each new span.
+// otel.SpanOptions, which are applied to each new span.
 func WithSpanOptions(opts ...trace.SpanOption) Option {
 	return OptionFunc(func(c *config) {
 		c.SpanStartOptions = append(c.SpanStartOptions, opts...)

@@ -20,10 +20,10 @@ import (
 	"net/http"
 
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/api/trace"
+	"go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/semconv"
 
-	"go.opentelemetry.io/otel/codes"
+	// @@@ "go.opentelemetry.io/otel/codes"
 )
 
 // Transport implements the http.RoundTripper interface and wraps
@@ -91,7 +91,8 @@ func (t *Transport) RoundTrip(r *http.Request) (*http.Response, error) {
 
 	res, err := t.rt.RoundTrip(r)
 	if err != nil {
-		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		// @@@
+		span.RecordError(err, /*trace.WithErrorStatus(codes.Error)*/)
 		span.End()
 		return res, err
 	}
@@ -120,7 +121,7 @@ func (wb *wrappedBody) Read(b []byte) (int, error) {
 	case io.EOF:
 		wb.span.End()
 	default:
-		wb.span.RecordError(wb.ctx, err, trace.WithErrorStatus(codes.Error))
+		wb.span.RecordError(err /*, trace.WithErrorStatus(codes.Error)*/)
 	}
 	return n, err
 }
