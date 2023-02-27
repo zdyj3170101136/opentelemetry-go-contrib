@@ -19,6 +19,7 @@ import (
 	"crypto/tls"
 	"net/http/httptrace"
 	"net/textproto"
+	"runtime/debug"
 	"strings"
 	"sync"
 
@@ -289,6 +290,7 @@ func (ct *clientTracer) gotConn(info httptrace.GotConnInfo) {
 }
 
 func (ct *clientTracer) putIdleConn(err error) {
+	debug.PrintStack()
 	ct.end("http.receive", err)
 }
 
